@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gif2ascii"
+version = "1.2.0"
+description = "Unified animated GIF to ASCII converter, interactive TUI studio, preset & library manager, and zero-flicker terminal player."
+readme = "README.md"
+authors = [
+    { name = "TIXIANO70", email = "tizianoespinoza60@gmail.com" }
+]
+license = { text = "GPL-3.0-only" }
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Terminals"
+]
+keywords = ["gif", "ascii", "ascii-art", "terminal", "ansi", "tui", "unicode", "truecolor", "asciiaquarium"]
+dependencies = [
+    "Pillow>=9.0.0"
+]
+
+[project.scripts]
+gif2ascii = "cli:main"
+gif2ascii-player = "ascii_player:main"
+
+[project.urls]
+Homepage = "https://github.com/TIXIANO70/gif2ascii"
+Repository = "https://github.com/TIXIANO70/gif2ascii"
+Issues = "https://github.com/TIXIANO70/gif2ascii/issues"
