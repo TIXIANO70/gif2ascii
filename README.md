@@ -29,9 +29,38 @@ A high-performance, unified Python CLI application and interactive TUI studio de
 
 ---
 
-## 📦 Installation
+## 📦 Requirements & System Dependencies
 
-Clone the repository and install globally into your environment:
+`gif2ascii` requires **Python 3.8+** and the **Pillow** image processing library.
+
+### 1. Install System Packages by OS
+
+#### Arch Linux / Manjaro
+```bash
+sudo pacman -S python python-pillow python-pip git
+```
+
+#### Debian / Ubuntu / Pop!_OS / Linux Mint
+```bash
+sudo apt update
+sudo apt install python3 python3-pip python3-pil git
+```
+
+#### Fedora / RHEL
+```bash
+sudo dnf install python3 python3-pip python3-pillow git
+```
+
+#### macOS (via Homebrew)
+```bash
+brew install python pillow git
+```
+
+---
+
+### 2. Install `gif2ascii`
+
+Clone the repository and install globally into your user environment:
 
 ```bash
 git clone https://github.com/TIXIANO70/gif2ascii.git
