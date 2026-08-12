@@ -61,6 +61,11 @@ def parse_args():
         action="store_true",
         help="Fill transparent background pixels with solid black instead of terminal default background"
     )
+    parser.add_argument(
+        "--allow-upscale",
+        action="store_true",
+        help="Allow upscaling GIFs smaller than target width/preset instead of using native GIF resolution"
+    )
     return parser.parse_args()
 
 def extract_composited_frames(gif: Image.Image) -> List[Tuple[Image.Image, int]]:
@@ -119,7 +124,8 @@ def convert_gif(
     color_mode: str,
     speed: float,
     font_aspect_ratio: float,
-    black_bg: bool = False
+    black_bg: bool = False,
+    allow_upscale: bool = False
 ):
     if not os.path.exists(input_path):
         print(f"Error: Input file '{input_path}' does not exist.", file=sys.stderr)
@@ -131,8 +137,14 @@ def convert_gif(
         print(f"Error opening GIF '{input_path}': {e}", file=sys.stderr)
         sys.exit(1)
 
+    orig_w, orig_h = gif.size
+    effective_width = width
+    if not allow_upscale and width > orig_w:
+        effective_width = orig_w
+        print(f"Info: Input GIF width ({orig_w}px) is smaller than target width ({width}). Using native GIF width ({orig_w}).")
+
     print(f"Converting '{input_path}'...")
-    print(f"Options: width={width}, mode={mode}, color={color_mode}, speed={speed}x, black_bg={black_bg}")
+    print(f"Options: width={effective_width}, mode={mode}, color={color_mode}, speed={speed}x, black_bg={black_bg}")
 
     start_time = time.time()
     composited_frames = extract_composited_frames(gif)
@@ -146,7 +158,7 @@ def convert_gif(
         
         ascii_content, calc_w, calc_h = frame_to_ascii(
             frame_img,
-            target_width=width,
+            target_width=effective_width,
             mode=mode,
             color_mode=color_mode,
             font_aspect_ratio=font_aspect_ratio,
@@ -195,7 +207,8 @@ def main():
         color_mode=args.color,
         speed=args.speed,
         font_aspect_ratio=args.aspect_ratio,
-        black_bg=args.black_bg
+        black_bg=args.black_bg,
+        allow_upscale=args.allow_upscale
     )
 
 if __name__ == "__main__":

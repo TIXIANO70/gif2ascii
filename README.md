@@ -1,4 +1,4 @@
-# gif2ascii 🎬✨
+# gif2ascii
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-brightgreen.svg)](https://www.python.org/)
@@ -8,7 +8,7 @@ A high-performance, unified Python CLI application and interactive TUI studio de
 
 ---
 
-## 🌟 Key Features
+## Key Features
 
 - **Streamlined TUI Studio (`gif2ascii`)**:
   - Zero-dependency arrow-key terminal user interface.
@@ -29,7 +29,7 @@ A high-performance, unified Python CLI application and interactive TUI studio de
 
 ---
 
-## 📦 Requirements & System Dependencies
+## Requirements & System Dependencies
 
 `gif2ascii` requires **Python 3.8+** and the **Pillow** image processing library.
 
@@ -70,7 +70,7 @@ pip install --user --break-system-packages -e .
 
 ---
 
-## 🚀 Quickstart Guide
+## Quickstart Guide
 
 ### 1. Interactive TUI Studio Menu
 
@@ -81,12 +81,12 @@ gif2ascii
 ```
 
 Main Menu Options:
-- `📁 Select GIF File` `[sample.gif]` *(Unified selector: Custom path/alias, local GIFs, Favorites, & History)*
-- `🎨 Select Preset` `[Pixel Art]`
-- `▶  PLAY ANIMATION NOW`
-- `💾 Export .asciigif Package`
-- `⚙️  Manage Custom Presets`
-- `❌ Exit`
+- `Select GIF File` `[sample.gif]` *(Unified selector: Custom path/alias, local GIFs, Favorites, & History)*
+- `Select Preset` `[Pixel Art]`
+- `PLAY ANIMATION NOW`
+- `Export .asciigif Package`
+- `Manage Custom Presets`
+- `Exit`
 
 ---
 
@@ -137,7 +137,7 @@ gif2ascii preset list
 
 ---
 
-## 🎮 Interactive Player Keyboard Controls
+## Interactive Player Keyboard Controls
 
 While an animation is playing in your terminal:
 
@@ -145,17 +145,16 @@ While an animation is playing in your terminal:
 - <kbd>+</kbd> / <kbd>=</kbd> : **Increase speed** (+0.2x)
 - <kbd>-</kbd> / <kbd>_</kbd> : **Decrease speed** (-0.2x)
 - <kbd>R</kbd> : **Restart** animation from frame 0
-- <kbd>M</kbd> : **Toggle color / monochrome** mode
 - <kbd>Q</kbd> / <kbd>ESC</kbd> / <kbd>Ctrl+C</kbd> : **Quit** cleanly (restores terminal cursor and settings)
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please check [CONTRIBUTING.md](CONTRIBUTING.md) for details on submitting issues and pull requests.
 
 ---
 
-## 📜 License
+## License
 
 Distributed under the **GNU General Public License v3.0 (GPLv3)**. See [LICENSE](LICENSE) for more information.

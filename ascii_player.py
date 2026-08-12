@@ -9,7 +9,6 @@ import time
 import argparse
 import signal
 import atexit
-import re
 from utils import load_asciigif
 
 # Unix non-blocking input setup
@@ -70,11 +69,6 @@ class TerminalController:
             return key
         return ""
 
-def strip_ansi(text: str) -> str:
-    """Remove ANSI escape codes from string for monochrome mode."""
-    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
-    return ansi_escape.sub('', text)
-
 def get_term_size():
     try:
         size = os.get_terminal_size()
@@ -126,7 +120,6 @@ def play_animation(asciigif_path: str, loop_count: int = -1, override_fps: float
     current_frame_idx = 0
     paused = False
     speed_multiplier = 1.0
-    mono_override = False
     loops_completed = 0
 
     while True:
@@ -143,15 +136,13 @@ def play_animation(asciigif_path: str, loop_count: int = -1, override_fps: float
 
         # Prepare frame content
         content = frame_data["content"]
-        if mono_override:
-            content = strip_ansi(content)
 
         # Status overlay line
         status = (
             f"\033[0m\r[Frame {current_frame_idx + 1}/{len(frames)}] "
             f"[{'PAUSED' if paused else 'PLAYING'}] "
             f"Speed: {speed_multiplier:.1f}x | "
-            f"[Space] Pause | [+/-] Speed | [R] Reset | [M] Color | [Q] Quit\033[K"
+            f"[Space] Pause | [+/-] Speed | [R] Reset | [Q] Quit\033[K"
         )
 
         # Render frame at home position (\033[H)
@@ -182,9 +173,6 @@ def play_animation(asciigif_path: str, loop_count: int = -1, override_fps: float
             elif key in ['r', 'R']:
                 current_frame_idx = 0
                 sys.stdout.write("\033[2J")  # Clear screen on reset
-                break
-            elif key in ['m', 'M']:
-                mono_override = not mono_override
                 break
 
         if not paused:
