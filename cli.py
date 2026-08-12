@@ -84,9 +84,14 @@ def main():
     l_rem = lib_sub.add_parser("remove", help="Remove a favorite from library")
     l_rem.add_argument("alias", type=str, help="Alias shortcut name to remove")
 
+    # Command: uninstall
+    uninst_parser = subparsers.add_parser("uninstall", help="Uninstall gif2ascii package and remove binaries/user data")
+    uninst_parser.add_argument("--purge", action="store_true", help="Also remove user data (~/.config/gif2ascii and ~/.local/share/gif2ascii)")
+    uninst_parser.add_argument("-y", "--yes", action="store_true", help="Automatic yes to prompts")
+
     # If first argument looks like a GIF or file or alias, default to 'play' subcommand!
     first_arg = sys.argv[1]
-    if first_arg not in ["play", "convert", "preset", "library", "-h", "--help"] and not first_arg.startswith("-"):
+    if first_arg not in ["play", "convert", "preset", "library", "uninstall", "-h", "--help"] and not first_arg.startswith("-"):
         sys.argv.insert(1, "play")
 
     args = parser.parse_args()
@@ -253,6 +258,39 @@ def main():
                 print(f"\033[32mRemoved '\033[1m{args.alias}\033[22m' from Library.\033[0m")
             else:
                 print(f"\033[31mError: Favorite alias '{args.alias}' not found.\033[0m", file=sys.stderr)
+
+    elif args.subcommand == "uninstall":
+        import shutil
+        import subprocess
+
+        print("\033[1;33m=== 🗑️  gif2ascii Uninstaller ===\033[0m")
+        
+        do_purge = args.purge
+        if not do_purge and not args.yes:
+            ans = input("Do you also want to remove user data (~/.config/gif2ascii and ~/.local/share/gif2ascii)? [y/N]: ").strip().lower()
+            do_purge = ans in ['y', 'yes']
+
+        if not args.yes:
+            confirm = input("Are you sure you want to uninstall gif2ascii? [y/N]: ").strip().lower()
+            if confirm not in ['y', 'yes']:
+                print("Uninstallation cancelled.")
+                return
+
+        if do_purge:
+            config_dir = os.path.expanduser("~/.config/gif2ascii")
+            share_dir = os.path.expanduser("~/.local/share/gif2ascii")
+            for p in [config_dir, share_dir]:
+                if os.path.exists(p):
+                    shutil.rmtree(p, ignore_errors=True)
+                    print(f"\033[32mRemoved user data: {p}\033[0m")
+
+        print("Uninstalling Python package via pip...")
+        try:
+            subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "gif2ascii"], check=True)
+            print("\033[1;32mSuccessfully uninstalled gif2ascii!\033[0m")
+        except Exception as e:
+            print(f"\033[31mFailed to run pip uninstall automatically: {e}\033[0m")
+            print("You can run manually: pip uninstall -y gif2ascii")
 
 if __name__ == "__main__":
     main()

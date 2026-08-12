@@ -149,6 +149,23 @@ While an animation is playing in your terminal:
 
 ---
 
+## Uninstallation
+
+To uninstall `gif2ascii` and clean installed binaries:
+
+```bash
+# Using CLI subcommand:
+gif2ascii uninstall
+
+# Or purge all custom presets & saved library data:
+gif2ascii uninstall --purge
+
+# Alternatively, run the standalone uninstaller script:
+./uninstall.sh --purge
+```
+
+---
+
 ## Contributing
 
 Contributions are welcome! Please check [CONTRIBUTING.md](CONTRIBUTING.md) for details on submitting issues and pull requests.

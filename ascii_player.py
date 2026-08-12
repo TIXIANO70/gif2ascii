@@ -146,7 +146,8 @@ def play_animation(asciigif_path: str, loop_count: int = -1, override_fps: float
         )
 
         # Render frame at home position (\033[H)
-        buffer = "\033[H" + content + "\r\n" + status
+        # \033[J clears screen from cursor to end, eliminating ghosting from taller/wider previous frames
+        buffer = "\033[H" + content + "\r\n" + status + "\033[J"
         sys.stdout.write(buffer)
         sys.stdout.flush()
 
