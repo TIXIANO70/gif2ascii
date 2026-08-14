@@ -9,7 +9,11 @@ import time
 import argparse
 import signal
 import atexit
-from utils import load_asciigif
+import gzip
+import json
+from utils import load_asciigif, get_logger
+
+logger = get_logger()
 
 # Unix non-blocking input setup
 HAS_TERMIOS = False
@@ -33,8 +37,8 @@ class TerminalController:
                 self.old_settings = termios.tcgetattr(sys.stdin)
                 tty.setcbreak(sys.stdin.fileno())
                 self.is_raw = True
-            except Exception:
-                pass
+            except (termios.error, OSError) as e:
+                logger.debug(f"Could not setup raw terminal mode: {e}")
         # Hide cursor
         sys.stdout.write("\033[?25l")
         sys.stdout.flush()
@@ -47,8 +51,8 @@ class TerminalController:
             try:
                 termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
                 self.is_raw = False
-            except Exception:
-                pass
+            except (termios.error, OSError) as e:
+                logger.debug(f"Could not restore terminal settings: {e}")
 
     def get_key(self, timeout: float = 0.0) -> str:
         """Poll for a single key press within timeout seconds."""
@@ -73,7 +77,7 @@ def get_term_size():
     try:
         size = os.get_terminal_size()
         return size.columns, size.lines
-    except Exception:
+    except OSError:
         return 80, 24
 
 def play_animation(asciigif_path: str, loop_count: int = -1, override_fps: float = None):
@@ -83,7 +87,8 @@ def play_animation(asciigif_path: str, loop_count: int = -1, override_fps: float
 
     try:
         package = load_asciigif(asciigif_path)
-    except Exception as e:
+    except (gzip.BadGzipFile, json.JSONDecodeError, OSError, UnicodeDecodeError, KeyError) as e:
+        logger.error(f"Error loading '.asciigif' package '{asciigif_path}': {e}")
         print(f"Error loading '.asciigif' package: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -103,14 +108,20 @@ def play_animation(asciigif_path: str, loop_count: int = -1, override_fps: float
 
     term = TerminalController()
 
-    def cleanup_handler(sig=None, frame=None):
+    old_sigint = signal.getsignal(signal.SIGINT)
+    old_sigterm = signal.getsignal(signal.SIGTERM)
+
+    def sig_handler(sig=None, frame=None):
         term.restore()
         sys.exit(0)
 
-    signal.signal(signal.SIGINT, cleanup_handler)
-    signal.signal(signal.SIGTERM, cleanup_handler)
-    atexit.register(term.restore)
+    try:
+        signal.signal(signal.SIGINT, sig_handler)
+        signal.signal(signal.SIGTERM, sig_handler)
+    except (ValueError, OSError):
+        pass
 
+    atexit.register(term.restore)
     term.setup_raw()
 
     # Clear screen initially
@@ -122,67 +133,78 @@ def play_animation(asciigif_path: str, loop_count: int = -1, override_fps: float
     speed_multiplier = 1.0
     loops_completed = 0
 
-    while True:
-        if loop_count > 0 and loops_completed >= loop_count:
-            break
-
-        frame_data = frames[current_frame_idx]
-        base_delay_ms = frame_data.get("delay_ms", 100)
-
-        if override_fps and override_fps > 0:
-            target_delay_sec = (1.0 / override_fps) / speed_multiplier
-        else:
-            target_delay_sec = (base_delay_ms / 1000.0) / speed_multiplier
-
-        # Prepare frame content
-        content = frame_data["content"]
-
-        # Status overlay line
-        status = (
-            f"\033[0m\r[Frame {current_frame_idx + 1}/{len(frames)}] "
-            f"[{'PAUSED' if paused else 'PLAYING'}] "
-            f"Speed: {speed_multiplier:.1f}x | "
-            f"[Space] Pause | [+/-] Speed | [R] Reset | [Q] Quit\033[K"
-        )
-
-        # Render frame at home position (\033[H)
-        # \033[J clears screen from cursor to end, eliminating ghosting from taller/wider previous frames
-        buffer = "\033[H" + content + "\r\n" + status + "\033[J"
-        sys.stdout.write(buffer)
-        sys.stdout.flush()
-
-        # Handle timing and keyboard events during frame delay
-        frame_start = time.perf_counter()
-
+    try:
         while True:
-            elapsed = time.perf_counter() - frame_start
-            remaining = target_delay_sec - elapsed
-            if remaining <= 0 and not paused:
+            if loop_count > 0 and loops_completed >= loop_count:
                 break
 
-            poll_time = max(0.01, remaining) if not paused else 0.1
-            key = term.get_key(timeout=poll_time)
+            frame_data = frames[current_frame_idx]
+            base_delay_ms = frame_data.get("delay_ms", 100)
 
-            if key in ['q', 'Q', '\x1b', '\x03']:  # 'q', ESC, or Ctrl+C
-                cleanup_handler()
-            elif key == ' ':
-                paused = not paused
-            elif key in ['+', '=']:
-                speed_multiplier = min(5.0, round(speed_multiplier + 0.2, 1))
-            elif key in ['-', '_']:
-                speed_multiplier = max(0.2, round(speed_multiplier - 0.2, 1))
-            elif key in ['r', 'R']:
-                current_frame_idx = 0
-                sys.stdout.write("\033[2J")  # Clear screen on reset
+            if override_fps and override_fps > 0:
+                target_delay_sec = (1.0 / override_fps) / speed_multiplier
+            else:
+                target_delay_sec = (base_delay_ms / 1000.0) / speed_multiplier
+
+            # Prepare frame content
+            content = frame_data["content"]
+
+            # Status overlay line
+            status = (
+                f"\033[0m\r[Frame {current_frame_idx + 1}/{len(frames)}] "
+                f"[{'PAUSED' if paused else 'PLAYING'}] "
+                f"Speed: {speed_multiplier:.1f}x | "
+                f"[Space] Pause | [+/-] Speed | [R] Reset | [Q] Quit\033[K"
+            )
+
+            # Render frame at home position (\033[H)
+            # \033[J clears screen from cursor to end, eliminating ghosting from taller/wider previous frames
+            buffer = "\033[H" + content + "\r\n" + status + "\033[J"
+            sys.stdout.write(buffer)
+            sys.stdout.flush()
+
+            # Handle timing and keyboard events during frame delay
+            frame_start = time.perf_counter()
+            quit_playback = False
+
+            while True:
+                elapsed = time.perf_counter() - frame_start
+                remaining = target_delay_sec - elapsed
+                if remaining <= 0 and not paused:
+                    break
+
+                poll_time = max(0.01, remaining) if not paused else 0.1
+                key = term.get_key(timeout=poll_time)
+
+                if key in ['q', 'Q', '\x1b', '\x03']:  # 'q', ESC, or Ctrl+C
+                    quit_playback = True
+                    break
+                elif key == ' ':
+                    paused = not paused
+                elif key in ['+', '=']:
+                    speed_multiplier = min(5.0, round(speed_multiplier + 0.2, 1))
+                elif key in ['-', '_']:
+                    speed_multiplier = max(0.2, round(speed_multiplier - 0.2, 1))
+                elif key in ['r', 'R']:
+                    current_frame_idx = 0
+                    sys.stdout.write("\033[2J")  # Clear screen on reset
+                    break
+
+            if quit_playback:
                 break
 
-        if not paused:
-            current_frame_idx += 1
-            if current_frame_idx >= len(frames):
-                current_frame_idx = 0
-                loops_completed += 1
-
-    term.restore()
+            if not paused:
+                current_frame_idx += 1
+                if current_frame_idx >= len(frames):
+                    current_frame_idx = 0
+                    loops_completed += 1
+    finally:
+        term.restore()
+        try:
+            signal.signal(signal.SIGINT, old_sigint)
+            signal.signal(signal.SIGTERM, old_sigterm)
+        except (ValueError, OSError):
+            pass
 
 def main():
     parser = argparse.ArgumentParser(

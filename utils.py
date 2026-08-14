@@ -5,9 +5,30 @@ color encoding, transparency handling, and .asciigif file serialization.
 
 import gzip
 import json
+import logging
 import math
+import sys
 from typing import Dict, List, Tuple, Any
 from PIL import Image
+
+_LOGGER_NAME = "gif2ascii"
+
+def get_logger() -> logging.Logger:
+    """Returns the package-level logger for gif2ascii."""
+    return logging.getLogger(_LOGGER_NAME)
+
+def setup_logging(verbose: bool = False):
+    """Configures root stream handler for gif2ascii directing to sys.stderr."""
+    logger = get_logger()
+    level = logging.DEBUG if verbose else logging.WARNING
+    logger.setLevel(level)
+
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stderr)
+        formatter = logging.Formatter("[gif2ascii %(levelname)s] %(message)s")
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
 
 # ASCII Density Ramp (from darkest to brightest for dark terminal backgrounds)
 RAMP_STANDARD = " .:-=+*#%@"

@@ -12,6 +12,9 @@ from presets import PresetManager, BUILTIN_PRESETS
 from library import LibraryManager
 from gif2ascii import convert_gif
 from ascii_player import play_animation
+from utils import get_logger
+
+logger = get_logger()
 
 def get_gif_files() -> List[str]:
     """Scan current directory for .gif files."""
@@ -19,7 +22,8 @@ def get_gif_files() -> List[str]:
         files = [f for f in os.listdir(".") if f.lower().endswith(".gif")]
         files.sort()
         return files
-    except Exception:
+    except OSError as e:
+        logger.warning(f"Failed to scan directory for GIF files: {e}")
         return []
 
 def curses_menu(stdscr, title: str, options: List[str], descriptions: List[str] = None) -> int:
@@ -283,21 +287,25 @@ def main_tui(stdscr):
 
             # If selecting already converted .asciigif (from library/history)
             if selected_gif.lower().endswith(".asciigif"):
+                curses.def_prog_mode()
                 curses.endwin()
                 play_animation(selected_gif)
-                stdscr = curses.initscr()
+                curses.reset_prog_mode()
+                stdscr.clear()
+                curses.curs_set(0)
                 continue
 
             width_setting = preset_info.get("width", 50)
             if width_setting == "auto":
                 try:
                     term_cols = os.get_terminal_size().columns
-                except Exception:
+                except OSError:
                     term_cols = 80
                 width_val = max(20, term_cols)
             else:
                 width_val = int(width_setting)
 
+            curses.def_prog_mode()
             curses.endwin()
 
             temp_dir = os.path.join(tempfile.gettempdir(), "gif2ascii_cache")
@@ -321,7 +329,9 @@ def main_tui(stdscr):
 
             # Play animation
             play_animation(temp_asciigif)
-            stdscr = curses.initscr()
+            curses.reset_prog_mode()
+            stdscr.clear()
+            curses.curs_set(0)
 
         elif choice == 3:  # Export .asciigif
             if not selected_gif or not os.path.exists(selected_gif):
@@ -339,12 +349,13 @@ def main_tui(stdscr):
             if width_setting == "auto":
                 try:
                     term_cols = os.get_terminal_size().columns
-                except Exception:
+                except OSError:
                     term_cols = 80
                 width_val = max(20, term_cols)
             else:
                 width_val = int(width_setting)
 
+            curses.def_prog_mode()
             curses.endwin()
             print(f"\033[36mExporting '{selected_gif}' -> '{out_path}'...\033[0m")
             convert_gif(
@@ -359,7 +370,9 @@ def main_tui(stdscr):
             )
             print("\033[32mExport complete! Press ENTER to return to menu...\033[0m")
             input()
-            stdscr = curses.initscr()
+            curses.reset_prog_mode()
+            stdscr.clear()
+            curses.curs_set(0)
 
         elif choice == 4:  # Manage Presets
             m_options = ["➕ Create New Custom Preset", "🗑️ Delete Custom Preset", "<- Back"]

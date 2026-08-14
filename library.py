@@ -10,6 +10,9 @@ import time
 from typing import Dict, Any, List, Optional
 from gif2ascii import convert_gif
 from presets import PresetManager
+from utils import get_logger
+
+logger = get_logger()
 
 DATA_DIR = os.path.expanduser("~/.local/share/gif2ascii")
 LIBRARY_DIR = os.path.join(DATA_DIR, "library")
@@ -26,8 +29,11 @@ class LibraryManager:
         os.makedirs(self.data_dir, exist_ok=True)
         os.makedirs(self.library_dir, exist_ok=True)
         if not os.path.exists(self.index_file):
-            with open(self.index_file, "w", encoding="utf-8") as f:
-                json.dump({"favorites": {}, "history": []}, f, indent=2)
+            try:
+                with open(self.index_file, "w", encoding="utf-8") as f:
+                    json.dump({"favorites": {}, "history": []}, f, indent=2)
+            except OSError as e:
+                logger.warning(f"Failed to initialize library index at '{self.index_file}': {e}")
 
     def load_index(self) -> Dict[str, Any]:
         try:
@@ -35,19 +41,25 @@ class LibraryManager:
                 return {"favorites": {}, "history": []}
             with open(self.index_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                if "favorites" not in data:
+                if not isinstance(data, dict):
+                    data = {}
+                if "favorites" not in data or not isinstance(data["favorites"], dict):
                     data["favorites"] = {}
-                if "history" not in data:
+                if "history" not in data or not isinstance(data["history"], list):
                     data["history"] = []
                 return data
-        except Exception:
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning(f"Failed to load library index from '{self.index_file}': {e}")
             return {"favorites": {}, "history": []}
 
     def save_index(self, index_data: Dict[str, Any]):
-        os.makedirs(self.data_dir, exist_ok=True)
-        os.makedirs(self.library_dir, exist_ok=True)
-        with open(self.index_file, "w", encoding="utf-8") as f:
-            json.dump(index_data, f, indent=2, ensure_ascii=False)
+        try:
+            os.makedirs(self.data_dir, exist_ok=True)
+            os.makedirs(self.library_dir, exist_ok=True)
+            with open(self.index_file, "w", encoding="utf-8") as f:
+                json.dump(index_data, f, indent=2, ensure_ascii=False)
+        except OSError as e:
+            logger.warning(f"Failed to save library index to '{self.index_file}': {e}")
 
     def resolve_alias(self, alias_or_path: str) -> Optional[str]:
         """
@@ -93,7 +105,7 @@ class LibraryManager:
             if str(width_setting).lower() == "auto":
                 try:
                     term_cols = os.get_terminal_size().columns
-                except Exception:
+                except OSError:
                     term_cols = 80
                 width_val = max(20, term_cols)
             else:
@@ -136,8 +148,8 @@ class LibraryManager:
                 if os.path.exists(target_path):
                     try:
                         os.remove(target_path)
-                    except Exception:
-                        pass
+                    except OSError as e:
+                        logger.warning(f"Failed to delete favorite file '{target_path}': {e}")
             del favs[alias_key]
             index["favorites"] = favs
             self.save_index(index)
@@ -157,7 +169,8 @@ class LibraryManager:
         if os.path.exists(asciigif_path):
             try:
                 shutil.copy2(asciigif_path, hist_filepath)
-            except Exception:
+            except OSError as e:
+                logger.warning(f"Failed to cache animation in history '{hist_filepath}': {e}")
                 hist_filepath = asciigif_path
 
         base_title = os.path.splitext(os.path.basename(gif_path))[0]
@@ -177,8 +190,8 @@ class LibraryManager:
             if os.path.exists(old_file):
                 try:
                     os.remove(old_file)
-                except Exception:
-                    pass
+                except OSError as e:
+                    logger.warning(f"Failed to prune old history file '{old_file}': {e}")
 
         index["history"] = history
         self.save_index(index)

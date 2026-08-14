@@ -12,6 +12,9 @@ from library import LibraryManager
 from gif2ascii import convert_gif
 from ascii_player import play_animation
 from tui import run_tui_app
+from utils import setup_logging, get_logger
+
+logger = get_logger()
 
 def main():
     pm = PresetManager()
@@ -19,6 +22,7 @@ def main():
 
     # If no arguments provided, launch interactive TUI menu
     if len(sys.argv) == 1:
+        setup_logging(verbose=False)
         run_tui_app()
         return
 
@@ -26,6 +30,7 @@ def main():
         prog="gif2ascii",
         description="Unified GIF to ASCII converter, interactive TUI, preset & library manager, and terminal player."
     )
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debug logging")
     subparsers = parser.add_subparsers(dest="subcommand", help="Sub-commands")
 
     # Command: play
@@ -95,6 +100,7 @@ def main():
         sys.argv.insert(1, "play")
 
     args = parser.parse_args()
+    setup_logging(verbose=getattr(args, "verbose", False))
 
     if args.subcommand == "play":
         input_target = args.input
@@ -122,7 +128,7 @@ def main():
         if str(width_setting).lower() == "auto":
             try:
                 term_cols = os.get_terminal_size().columns
-            except Exception:
+            except OSError:
                 term_cols = 80
             width_val = max(20, term_cols)
         else:
@@ -166,7 +172,7 @@ def main():
         if str(width_setting).lower() == "auto":
             try:
                 term_cols = os.get_terminal_size().columns
-            except Exception:
+            except OSError:
                 term_cols = 80
             width_val = max(20, term_cols)
         else:
@@ -288,7 +294,8 @@ def main():
         try:
             subprocess.run([sys.executable, "-m", "pip", "uninstall", "-y", "gif2ascii"], check=True)
             print("\033[1;32mSuccessfully uninstalled gif2ascii!\033[0m")
-        except Exception as e:
+        except (subprocess.SubprocessError, OSError) as e:
+            logger.error(f"Failed to run pip uninstall automatically: {e}")
             print(f"\033[31mFailed to run pip uninstall automatically: {e}\033[0m")
             print("You can run manually: pip uninstall -y gif2ascii")
 

@@ -6,6 +6,9 @@ Stores built-in defaults and user-created custom presets in ~/.config/gif2ascii/
 import os
 import json
 from typing import Dict, Any, List
+from utils import get_logger
+
+logger = get_logger()
 
 CONFIG_DIR = os.path.expanduser("~/.config/gif2ascii")
 PRESETS_FILE = os.path.join(CONFIG_DIR, "presets.json")
@@ -70,13 +73,17 @@ class PresetManager:
             with open(self.config_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return data if isinstance(data, dict) else {}
-        except Exception:
+        except (json.JSONDecodeError, OSError) as e:
+            logger.warning(f"Failed to load user presets from '{self.config_file}': {e}")
             return {}
 
     def save_user_presets(self, presets: Dict[str, Dict[str, Any]]):
         self.ensure_config_dir()
-        with open(self.config_file, "w", encoding="utf-8") as f:
-            json.dump(presets, f, indent=2, ensure_ascii=False)
+        try:
+            with open(self.config_file, "w", encoding="utf-8") as f:
+                json.dump(presets, f, indent=2, ensure_ascii=False)
+        except OSError as e:
+            logger.warning(f"Failed to save user presets to '{self.config_file}': {e}")
 
     def get_all_presets(self) -> Dict[str, Dict[str, Any]]:
         """Return combined dict of built-in and user custom presets."""

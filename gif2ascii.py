@@ -9,7 +9,9 @@ import argparse
 import time
 from typing import List, Tuple
 from PIL import Image, ImageSequence
-from utils import frame_to_ascii, save_asciigif
+from utils import frame_to_ascii, save_asciigif, get_logger
+
+logger = get_logger()
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -107,7 +109,8 @@ def extract_composited_frames(gif: Image.Image) -> List[Tuple[Image.Image, int]]
                 extents = tile[1]  # (left, top, right, bottom)
                 box = (extents[0], extents[1])
                 canvas.alpha_composite(frame_rgba, box)
-            except Exception:
+            except (IndexError, ValueError, OSError, AttributeError) as e:
+                logger.debug(f"Tile compositing fallback: {e}")
                 canvas.alpha_composite(frame_rgba)
         else:
             canvas.alpha_composite(frame_rgba)
@@ -133,7 +136,8 @@ def convert_gif(
 
     try:
         gif = Image.open(input_path)
-    except Exception as e:
+    except (Image.UnidentifiedImageError, OSError) as e:
+        logger.error(f"Error opening GIF '{input_path}': {e}")
         print(f"Error opening GIF '{input_path}': {e}", file=sys.stderr)
         sys.exit(1)
 
