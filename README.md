@@ -60,13 +60,25 @@ brew install python pillow git
 
 ### 2. Install `gif2ascii`
 
-Clone the repository and install globally into your user environment:
+Clone the repository and install into your user environment:
 
 ```bash
 git clone https://github.com/TIXIANO70/gif2ascii.git
 cd gif2ascii
 pip install --user --break-system-packages -e .
 ```
+
+> **Note for Arch Linux / Linux users:**
+> `pip install --user` places executables in `~/.local/bin`. If running `gif2ascii` shows `bash: gif2ascii: command not found`, ensure `~/.local/bin` is in your `$PATH` by adding the following line to your `~/.bashrc` or `~/.zshrc`:
+> ```bash
+> export PATH="$HOME/.local/bin:$PATH"
+> ```
+> Then reload your shell (`source ~/.bashrc` or `source ~/.zshrc`).
+>
+> Alternatively, you can run the tool directly as a Python module:
+> ```bash
+> python3 -m gif2ascii
+> ```
 
 ---
 
