@@ -7,11 +7,14 @@ import sys
 import os
 import argparse
 import time
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from PIL import Image, ImageSequence
 from utils import frame_to_ascii, save_asciigif, get_logger
 
 logger = get_logger()
+
+DEFAULT_MAX_IMAGE_PIXELS = 89_478_485
+Image.MAX_IMAGE_PIXELS = DEFAULT_MAX_IMAGE_PIXELS
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -67,6 +70,12 @@ def parse_args():
         "--allow-upscale",
         action="store_true",
         help="Allow upscaling GIFs smaller than target width/preset instead of using native GIF resolution"
+    )
+    parser.add_argument(
+        "--max-pixels",
+        type=int,
+        default=DEFAULT_MAX_IMAGE_PIXELS,
+        help=f"Maximum allowed image pixels before raising DecompressionBombError (0 to disable) (default: {DEFAULT_MAX_IMAGE_PIXELS})"
     )
     return parser.parse_args()
 
@@ -134,14 +143,23 @@ def convert_gif(
     speed: float,
     font_aspect_ratio: float,
     black_bg: bool = False,
-    allow_upscale: bool = False
+    allow_upscale: bool = False,
+    max_pixels: Optional[int] = DEFAULT_MAX_IMAGE_PIXELS
 ):
     if not os.path.exists(input_path):
         print(f"Error: Input file '{input_path}' does not exist.", file=sys.stderr)
         sys.exit(1)
 
+    # Configure Pillow decompression limit (0 or None means disabled)
+    Image.MAX_IMAGE_PIXELS = None if max_pixels is None or max_pixels <= 0 else max_pixels
+
     try:
         gif = Image.open(input_path)
+    except Image.DecompressionBombError as e:
+        logger.error(f"Image decompression bomb detected in '{input_path}': {e}")
+        print(f"Error: GIF '{input_path}' exceeds safe decompression pixel limit ({e}).", file=sys.stderr)
+        print(f"Use '--max-pixels <count>' to increase limit or '--max-pixels 0' to disable safety check.", file=sys.stderr)
+        sys.exit(1)
     except (Image.UnidentifiedImageError, OSError) as e:
         logger.error(f"Error opening GIF '{input_path}': {e}")
         print(f"Error opening GIF '{input_path}': {e}", file=sys.stderr)
@@ -157,7 +175,10 @@ def convert_gif(
     print(f"Options: width={effective_width}, mode={mode}, color={color_mode}, speed={speed}x, black_bg={black_bg}")
 
     start_time = time.time()
-    composited_frames = extract_composited_frames(gif)
+    try:
+        composited_frames = extract_composited_frames(gif)
+    finally:
+        gif.close()
     total_frames = len(composited_frames)
 
     bg_color = (0, 0, 0) if black_bg else None
@@ -218,7 +239,8 @@ def main():
         speed=args.speed,
         font_aspect_ratio=args.aspect_ratio,
         black_bg=args.black_bg,
-        allow_upscale=args.allow_upscale
+        allow_upscale=args.allow_upscale,
+        max_pixels=args.max_pixels
     )
 
 if __name__ == "__main__":

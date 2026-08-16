@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gif2ascii"
-version = "1.3.0"
+version = "1.3.1"
 requires-python = ">=3.8"
 description = "Unified animated GIF to ASCII converter, interactive TUI studio, preset & library manager, and zero-flicker terminal player."
 readme = "README.md"

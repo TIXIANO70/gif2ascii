@@ -9,12 +9,12 @@ import argparse
 import tempfile
 from presets import PresetManager
 from library import LibraryManager
-from gif2ascii import convert_gif
+from gif2ascii import convert_gif, DEFAULT_MAX_IMAGE_PIXELS
 from ascii_player import play_animation
 from tui import run_tui_app
 from utils import setup_logging, get_logger
 
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 
 logger = get_logger()
 
@@ -40,6 +40,12 @@ def main():
     play_parser.add_argument("-w", "--width", type=str, default=None, help="Override width ('auto' or integer)")
     play_parser.add_argument("-l", "--loop", type=int, default=-1, help="Loop iterations (-1 for infinite)")
     play_parser.add_argument("--fps", type=float, default=None, help="Override playback FPS rate")
+    play_parser.add_argument(
+        "--max-pixels",
+        type=int,
+        default=DEFAULT_MAX_IMAGE_PIXELS,
+        help=f"Maximum allowed image pixels before raising DecompressionBombError (0 to disable) (default: {DEFAULT_MAX_IMAGE_PIXELS})"
+    )
 
     # Command: convert
     convert_parser = subparsers.add_parser("convert", help="Convert a GIF file to a compressed .asciigif package")
@@ -49,6 +55,12 @@ def main():
     convert_parser.add_argument("-w", "--width", type=str, default=None, help="Target character width ('auto' or integer)")
     convert_parser.add_argument("-m", "--mode", choices=["ascii", "blocks"], default=None, help="Override render mode")
     convert_parser.add_argument("-c", "--color", choices=["truecolor", "256", "mono"], default=None, help="Override color mode")
+    convert_parser.add_argument(
+        "--max-pixels",
+        type=int,
+        default=DEFAULT_MAX_IMAGE_PIXELS,
+        help=f"Maximum allowed image pixels before raising DecompressionBombError (0 to disable) (default: {DEFAULT_MAX_IMAGE_PIXELS})"
+    )
 
     # Command: preset
     preset_parser = subparsers.add_parser("preset", help="Manage custom presets (list, add, delete)")
@@ -150,7 +162,8 @@ def main():
             color_mode=preset_cfg.get("color", "truecolor"),
             speed=preset_cfg.get("speed", 1.0),
             font_aspect_ratio=0.5,
-            black_bg=preset_cfg.get("black_bg", False)
+            black_bg=preset_cfg.get("black_bg", False),
+            max_pixels=args.max_pixels
         )
 
         # Track in history
@@ -192,7 +205,8 @@ def main():
             color_mode=color_val,
             speed=preset_cfg.get("speed", 1.0),
             font_aspect_ratio=0.5,
-            black_bg=preset_cfg.get("black_bg", False)
+            black_bg=preset_cfg.get("black_bg", False),
+            max_pixels=args.max_pixels
         )
 
     elif args.subcommand == "preset":

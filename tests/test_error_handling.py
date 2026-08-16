@@ -18,6 +18,8 @@ from utils import get_logger, setup_logging
 from presets import PresetManager, BUILTIN_PRESETS
 from library import LibraryManager
 from tui import get_gif_files
+from gif2ascii import convert_gif, DEFAULT_MAX_IMAGE_PIXELS
+from PIL import Image
 
 class TestErrorHandling(unittest.TestCase):
 
@@ -152,6 +154,54 @@ class TestErrorHandling(unittest.TestCase):
              patch("sys.stdout", new_callable=io.StringIO):
             # This should complete normally and not raise SystemExit or _curses.error
             play_animation(asciigif_path)
+
+    def test_decompression_bomb_error_handling(self):
+        """Test that DecompressionBombError is cleanly caught and reported with helpful stderr message."""
+        test_gif_path = os.path.join(self.test_dir.name, "small.gif")
+        img = Image.new("RGB", (20, 20), color=(255, 0, 0))
+        img.save(test_gif_path, format="GIF")
+
+        stderr_capture = io.StringIO()
+        with patch("sys.stderr", stderr_capture), \
+             self.assertLogs("gif2ascii", level="ERROR") as cm, \
+             self.assertRaises(SystemExit) as exit_ctx:
+            # Set max_pixels=5 so 20x20 = 400 > 2 * 5 = 10 triggers DecompressionBombError
+            convert_gif(
+                input_path=test_gif_path,
+                output_path=os.path.join(self.test_dir.name, "out.asciigif"),
+                width=10,
+                mode="ascii",
+                color_mode="mono",
+                speed=1.0,
+                font_aspect_ratio=0.5,
+                max_pixels=5
+            )
+
+        self.assertEqual(exit_ctx.exception.code, 1)
+        self.assertTrue(any("decompression bomb" in msg.lower() for msg in cm.output))
+        self.assertIn("--max-pixels", stderr_capture.getvalue())
+
+    def test_decompression_bomb_disabled_with_zero(self):
+        """Test that max_pixels=0 disables the limit (sets Image.MAX_IMAGE_PIXELS = None)."""
+        test_gif_path = os.path.join(self.test_dir.name, "small2.gif")
+        img = Image.new("RGB", (10, 10), color=(0, 255, 0))
+        img.save(test_gif_path, format="GIF")
+        out_path = os.path.join(self.test_dir.name, "out2.asciigif")
+
+        with patch("sys.stdout", new_callable=io.StringIO):
+            convert_gif(
+                input_path=test_gif_path,
+                output_path=out_path,
+                width=10,
+                mode="ascii",
+                color_mode="mono",
+                speed=1.0,
+                font_aspect_ratio=0.5,
+                max_pixels=0
+            )
+
+        self.assertIsNone(Image.MAX_IMAGE_PIXELS)
+        self.assertTrue(os.path.exists(out_path))
 
 if __name__ == "__main__":
     unittest.main()
