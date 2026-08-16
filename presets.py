@@ -63,8 +63,11 @@ class PresetManager:
         self.ensure_config_dir()
 
     def ensure_config_dir(self):
-        if not os.path.exists(self.config_dir):
-            os.makedirs(self.config_dir, exist_ok=True)
+        try:
+            if not os.path.exists(self.config_dir):
+                os.makedirs(self.config_dir, exist_ok=True)
+        except OSError as e:
+            logger.debug(f"Failed to create config directory at '{self.config_dir}': {e}")
 
     def load_user_presets(self) -> Dict[str, Dict[str, Any]]:
         if not os.path.exists(self.config_file):

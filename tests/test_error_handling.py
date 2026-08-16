@@ -4,6 +4,7 @@ tests/test_error_handling.py - Unit tests for specific exception handling and lo
 
 import os
 import sys
+import io
 import json
 import logging
 import tempfile
@@ -23,9 +24,15 @@ class TestErrorHandling(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.TemporaryDirectory()
         self.logger = get_logger()
+        self._old_handlers = list(self.logger.handlers)
+        self._old_propagate = self.logger.propagate
+        self.logger.handlers = []
+        self.logger.propagate = False
 
     def tearDown(self):
         self.test_dir.cleanup()
+        self.logger.handlers = self._old_handlers
+        self.logger.propagate = self._old_propagate
 
     def test_setup_logging_levels(self):
         """Test that setup_logging properly sets WARNING or DEBUG levels."""
@@ -44,12 +51,12 @@ class TestErrorHandling(unittest.TestCase):
         pm = PresetManager(config_file=corrupt_config)
         with self.assertLogs("gif2ascii", level="WARNING") as cm:
             user_presets = pm.load_user_presets()
+            all_presets = pm.get_all_presets()
 
         self.assertEqual(user_presets, {})
         self.assertTrue(any("Failed to load user presets" in msg for msg in cm.output))
 
         # Ensure built-ins are still available even if user presets file is corrupt
-        all_presets = pm.get_all_presets()
         self.assertIn("pixel-art", all_presets)
 
     def test_presets_load_valid_json(self):
@@ -141,7 +148,8 @@ class TestErrorHandling(unittest.TestCase):
             f.write(gzip.compress(json.dumps(package).encode("utf-8")))
 
         from ascii_player import play_animation
-        with patch("ascii_player.TerminalController.get_key", return_value="q"):
+        with patch("ascii_player.TerminalController.get_key", return_value="q"), \
+             patch("sys.stdout", new_callable=io.StringIO):
             # This should complete normally and not raise SystemExit or _curses.error
             play_animation(asciigif_path)
 

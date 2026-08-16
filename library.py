@@ -26,14 +26,14 @@ class LibraryManager:
         self.ensure_dirs()
 
     def ensure_dirs(self):
-        os.makedirs(self.data_dir, exist_ok=True)
-        os.makedirs(self.library_dir, exist_ok=True)
-        if not os.path.exists(self.index_file):
-            try:
+        try:
+            os.makedirs(self.data_dir, exist_ok=True)
+            os.makedirs(self.library_dir, exist_ok=True)
+            if not os.path.exists(self.index_file):
                 with open(self.index_file, "w", encoding="utf-8") as f:
                     json.dump({"favorites": {}, "history": []}, f, indent=2)
-            except OSError as e:
-                logger.warning(f"Failed to initialize library index at '{self.index_file}': {e}")
+        except OSError as e:
+            logger.debug(f"Failed to create library directories at '{self.data_dir}': {e}")
 
     def load_index(self) -> Dict[str, Any]:
         try:

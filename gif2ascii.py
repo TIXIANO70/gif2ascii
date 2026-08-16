@@ -81,18 +81,23 @@ def extract_composited_frames(gif: Image.Image) -> List[Tuple[Image.Image, int]]
     canvas = Image.new("RGBA", (gif_w, gif_h), (0, 0, 0, 0))
     prev_canvas = None
     prev_disposal = 0
+    prev_tile_box = None
 
     for frame in ImageSequence.Iterator(gif):
         duration = frame.info.get("duration", 100)
         if duration <= 0:
             duration = 100
             
-        disposal = frame.info.get("disposal", 0)
+        disposal = getattr(frame, "disposal_method", frame.info.get("disposal", 0)) or 0
 
         # Handle disposal of the previous frame
         if prev_disposal == 2:
             # Restore to background (transparent)
-            canvas = Image.new("RGBA", (gif_w, gif_h), (0, 0, 0, 0))
+            if prev_tile_box:
+                clear_box = Image.new("RGBA", (prev_tile_box[2] - prev_tile_box[0], prev_tile_box[3] - prev_tile_box[1]), (0, 0, 0, 0))
+                canvas.paste(clear_box, (prev_tile_box[0], prev_tile_box[1]))
+            else:
+                canvas = Image.new("RGBA", (gif_w, gif_h), (0, 0, 0, 0))
         elif prev_disposal == 3 and prev_canvas is not None:
             # Restore to previous canvas state
             canvas = prev_canvas.copy()
@@ -102,18 +107,19 @@ def extract_composited_frames(gif: Image.Image) -> List[Tuple[Image.Image, int]]
 
         frame_rgba = frame.convert("RGBA")
         
-        # Check tile offset if present
+        tile_box = None
         if hasattr(frame, "tile") and frame.tile:
             try:
                 tile = frame.tile[0]
                 extents = tile[1]  # (left, top, right, bottom)
-                box = (extents[0], extents[1])
-                canvas.alpha_composite(frame_rgba, box)
+                tile_box = extents
             except (IndexError, ValueError, OSError, AttributeError) as e:
                 logger.debug(f"Tile compositing fallback: {e}")
-                canvas.alpha_composite(frame_rgba)
-        else:
-            canvas.alpha_composite(frame_rgba)
+        
+        prev_tile_box = tile_box
+
+        # Paste current frame over canvas using its alpha channel as mask
+        canvas.paste(frame_rgba, (0, 0), frame_rgba)
 
         frames.append((canvas.copy(), duration))
 

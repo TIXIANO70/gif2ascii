@@ -14,12 +14,11 @@ from ascii_player import play_animation
 from tui import run_tui_app
 from utils import setup_logging, get_logger
 
+__version__ = "1.3.0"
+
 logger = get_logger()
 
 def main():
-    pm = PresetManager()
-    lm = LibraryManager()
-
     # If no arguments provided, launch interactive TUI menu
     if len(sys.argv) == 1:
         setup_logging(verbose=False)
@@ -30,6 +29,7 @@ def main():
         prog="gif2ascii",
         description="Unified GIF to ASCII converter, interactive TUI, preset & library manager, and terminal player."
     )
+    parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable verbose debug logging")
     subparsers = parser.add_subparsers(dest="subcommand", help="Sub-commands")
 
@@ -101,6 +101,9 @@ def main():
 
     args = parser.parse_args()
     setup_logging(verbose=getattr(args, "verbose", False))
+
+    pm = PresetManager()
+    lm = LibraryManager()
 
     if args.subcommand == "play":
         input_target = args.input
