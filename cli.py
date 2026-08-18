@@ -14,7 +14,7 @@ from ascii_player import play_animation
 from tui import run_tui_app
 from utils import setup_logging, get_logger
 
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 
 logger = get_logger()
 
@@ -106,9 +106,12 @@ def main():
     uninst_parser.add_argument("--purge", action="store_true", help="Also remove user data (~/.config/gif2ascii and ~/.local/share/gif2ascii)")
     uninst_parser.add_argument("-y", "--yes", action="store_true", help="Automatic yes to prompts")
 
+    # Command: tui
+    subparsers.add_parser("tui", help="Launch interactive curses TUI studio")
+
     # If first argument looks like a GIF or file or alias, default to 'play' subcommand!
     first_arg = sys.argv[1]
-    if first_arg not in ["play", "convert", "preset", "library", "uninstall", "-h", "--help"] and not first_arg.startswith("-"):
+    if first_arg not in ["play", "convert", "preset", "library", "uninstall", "tui", "-h", "--help"] and not first_arg.startswith("-"):
         sys.argv.insert(1, "play")
 
     args = parser.parse_args()
@@ -315,6 +318,9 @@ def main():
             logger.error(f"Failed to run pip uninstall automatically: {e}")
             print(f"\033[31mFailed to run pip uninstall automatically: {e}\033[0m")
             print("You can run manually: pip uninstall -y gif2ascii")
+
+    elif args.subcommand == "tui":
+        run_tui_app()
 
 if __name__ == "__main__":
     main()

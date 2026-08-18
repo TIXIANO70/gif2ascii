@@ -7,6 +7,7 @@ import sys
 import os
 import curses
 import tempfile
+from contextlib import contextmanager
 from typing import List, Dict, Any
 from presets import PresetManager, BUILTIN_PRESETS
 from library import LibraryManager
@@ -15,6 +16,26 @@ from ascii_player import play_animation
 from utils import get_logger
 
 logger = get_logger()
+
+@contextmanager
+def suspend_curses(stdscr=None):
+    """
+    Safely suspend curses mode to execute external terminal actions
+    (such as animation playback or CLI export), guaranteeing that curses program mode
+    and screen/cursor state are reliably restored in all cases (including exceptions).
+    """
+    curses.def_prog_mode()
+    curses.endwin()
+    try:
+        yield
+    finally:
+        try:
+            curses.reset_prog_mode()
+            if stdscr is not None:
+                stdscr.clear()
+                curses.curs_set(0)
+        except curses.error as e:
+            logger.debug(f"Error resetting curses program mode: {e}")
 
 def get_gif_files() -> List[str]:
     """Scan current directory for .gif files."""
@@ -287,12 +308,17 @@ def main_tui(stdscr):
 
             # If selecting already converted .asciigif (from library/history)
             if selected_gif.lower().endswith(".asciigif"):
-                curses.def_prog_mode()
-                curses.endwin()
-                play_animation(selected_gif)
-                curses.reset_prog_mode()
-                stdscr.clear()
-                curses.curs_set(0)
+                try:
+                    with suspend_curses(stdscr):
+                        play_animation(selected_gif)
+                except (Exception, SystemExit) as e:
+                    logger.error(f"Playback error for '{selected_gif}': {e}")
+                    stdscr.erase()
+                    err_msg = str(e) if str(e) and str(e) != "1" else f"Failed to play '{selected_gif}'"
+                    stdscr.addstr(4, 4, f"Playback Error: {err_msg[:60]}", curses.A_BOLD)
+                    stdscr.addstr(6, 4, "Press any key to continue...")
+                    stdscr.refresh()
+                    stdscr.getch()
                 continue
 
             width_setting = preset_info.get("width", 50)
@@ -305,33 +331,38 @@ def main_tui(stdscr):
             else:
                 width_val = int(width_setting)
 
-            curses.def_prog_mode()
-            curses.endwin()
+            try:
+                with suspend_curses(stdscr):
+                    temp_dir = os.path.join(tempfile.gettempdir(), "gif2ascii_cache")
+                    os.makedirs(temp_dir, exist_ok=True)
+                    temp_asciigif = os.path.join(temp_dir, "current.asciigif")
 
-            temp_dir = os.path.join(tempfile.gettempdir(), "gif2ascii_cache")
-            os.makedirs(temp_dir, exist_ok=True)
-            temp_asciigif = os.path.join(temp_dir, "current.asciigif")
+                    print(f"\033[36mConverting '{selected_gif}' with preset '{preset_info['name']}'...\033[0m")
+                    convert_gif(
+                        input_path=selected_gif,
+                        output_path=temp_asciigif,
+                        width=width_val,
+                        mode=preset_info.get("mode", "blocks"),
+                        color_mode=preset_info.get("color", "truecolor"),
+                        speed=preset_info.get("speed", 1.0),
+                        font_aspect_ratio=0.5,
+                        black_bg=preset_info.get("black_bg", False)
+                    )
 
-            print(f"\033[36mConverting '{selected_gif}' with preset '{preset_info['name']}'...\033[0m")
-            convert_gif(
-                input_path=selected_gif,
-                output_path=temp_asciigif,
-                width=width_val,
-                mode=preset_info.get("mode", "blocks"),
-                color_mode=preset_info.get("color", "truecolor"),
-                speed=preset_info.get("speed", 1.0),
-                font_aspect_ratio=0.5,
-                black_bg=preset_info.get("black_bg", False)
-            )
+                    # Record in recent history
+                    lm.add_to_history(selected_gif, temp_asciigif, preset_name=selected_preset_key)
 
-            # Record in recent history
-            lm.add_to_history(selected_gif, temp_asciigif, preset_name=selected_preset_key)
-
-            # Play animation
-            play_animation(temp_asciigif)
-            curses.reset_prog_mode()
-            stdscr.clear()
-            curses.curs_set(0)
+                    # Play animation
+                    play_animation(temp_asciigif)
+            except (Exception, SystemExit) as e:
+                logger.error(f"Conversion/playback error: {e}")
+                stdscr.erase()
+                err_msg = str(e) if str(e) and str(e) != "1" else "Failed to process GIF file."
+                stdscr.addstr(4, 4, f"Error: {err_msg[:60]}", curses.A_BOLD)
+                stdscr.addstr(5, 4, "Check that the file exists and is a valid GIF animation.", curses.A_DIM)
+                stdscr.addstr(7, 4, "Press any key to continue...")
+                stdscr.refresh()
+                stdscr.getch()
 
         elif choice == 3:  # Export .asciigif
             if not selected_gif or not os.path.exists(selected_gif):
@@ -355,24 +386,29 @@ def main_tui(stdscr):
             else:
                 width_val = int(width_setting)
 
-            curses.def_prog_mode()
-            curses.endwin()
-            print(f"\033[36mExporting '{selected_gif}' -> '{out_path}'...\033[0m")
-            convert_gif(
-                input_path=selected_gif,
-                output_path=out_path,
-                width=width_val,
-                mode=preset_info.get("mode", "blocks"),
-                color_mode=preset_info.get("color", "truecolor"),
-                speed=preset_info.get("speed", 1.0),
-                font_aspect_ratio=0.5,
-                black_bg=preset_info.get("black_bg", False)
-            )
-            print("\033[32mExport complete! Press ENTER to return to menu...\033[0m")
-            input()
-            curses.reset_prog_mode()
-            stdscr.clear()
-            curses.curs_set(0)
+            try:
+                with suspend_curses(stdscr):
+                    print(f"\033[36mExporting '{selected_gif}' -> '{out_path}'...\033[0m")
+                    convert_gif(
+                        input_path=selected_gif,
+                        output_path=out_path,
+                        width=width_val,
+                        mode=preset_info.get("mode", "blocks"),
+                        color_mode=preset_info.get("color", "truecolor"),
+                        speed=preset_info.get("speed", 1.0),
+                        font_aspect_ratio=0.5,
+                        black_bg=preset_info.get("black_bg", False)
+                    )
+                    print("\033[32mExport complete! Press ENTER to return to menu...\033[0m")
+                    input()
+            except (Exception, SystemExit) as e:
+                logger.error(f"Export error: {e}")
+                stdscr.erase()
+                err_msg = str(e) if str(e) and str(e) != "1" else f"Failed to export to '{out_path}'."
+                stdscr.addstr(4, 4, f"Export Error: {err_msg[:60]}", curses.A_BOLD)
+                stdscr.addstr(6, 4, "Press any key to continue...")
+                stdscr.refresh()
+                stdscr.getch()
 
         elif choice == 4:  # Manage Presets
             m_options = ["➕ Create New Custom Preset", "🗑️ Delete Custom Preset", "<- Back"]
