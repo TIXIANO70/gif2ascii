@@ -19,10 +19,11 @@ LIBRARY_DIR = os.path.join(DATA_DIR, "library")
 INDEX_FILE = os.path.join(DATA_DIR, "library.json")
 
 class LibraryManager:
-    def __init__(self, data_dir: str = DATA_DIR):
+    def __init__(self, data_dir: str = DATA_DIR, preset_manager: Optional[PresetManager] = None):
         self.data_dir = data_dir
         self.library_dir = os.path.join(data_dir, "library")
         self.index_file = os.path.join(data_dir, "library.json")
+        self.preset_manager = preset_manager if preset_manager is not None else PresetManager()
         self.ensure_dirs()
 
     def ensure_dirs(self):
@@ -94,8 +95,7 @@ class LibraryManager:
         target_filename = f"{alias_key}.asciigif"
         target_filepath = os.path.join(self.library_dir, target_filename)
 
-        pm = PresetManager()
-        preset_cfg = pm.get_preset(preset_name)
+        preset_cfg = self.preset_manager.get_preset(preset_name)
 
         # If source is already an .asciigif file, copy it directly
         if gif_or_asciigif_path.lower().endswith(".asciigif"):

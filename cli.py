@@ -14,17 +14,12 @@ from ascii_player import play_animation
 from tui import run_tui_app
 from utils import setup_logging, get_logger
 
-__version__ = "1.3.3"
+__version__ = "1.3.4"
 
 logger = get_logger()
 
-def main():
-    # If no arguments provided, launch interactive TUI menu
-    if len(sys.argv) == 1:
-        setup_logging(verbose=False)
-        run_tui_app()
-        return
-
+def build_parser() -> argparse.ArgumentParser:
+    """Build and return the argument parser for gif2ascii CLI."""
     parser = argparse.ArgumentParser(
         prog="gif2ascii",
         description="Unified GIF to ASCII converter, interactive TUI, preset & library manager, and terminal player."
@@ -108,6 +103,18 @@ def main():
 
     # Command: tui
     subparsers.add_parser("tui", help="Launch interactive curses TUI studio")
+
+    return parser
+
+
+def main():
+    # If no arguments provided, launch interactive TUI menu
+    if len(sys.argv) == 1:
+        setup_logging(verbose=False)
+        run_tui_app()
+        return
+
+    parser = build_parser()
 
     # If first argument looks like a GIF or file or alias, default to 'play' subcommand!
     first_arg = sys.argv[1]
