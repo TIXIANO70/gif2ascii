@@ -8,10 +8,10 @@ import os
 import curses
 import tempfile
 from contextlib import contextmanager
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple, Optional
 from presets import PresetManager, BUILTIN_PRESETS
 from library import LibraryManager
-from gif2ascii import convert_gif
+from gif2ascii import convert_gif, convert_with_preset
 from ascii_player import play_animation
 from utils import get_logger
 
@@ -321,16 +321,6 @@ def main_tui(stdscr):
                     stdscr.getch()
                 continue
 
-            width_setting = preset_info.get("width", 50)
-            if width_setting == "auto":
-                try:
-                    term_cols = os.get_terminal_size().columns
-                except OSError:
-                    term_cols = 80
-                width_val = max(20, term_cols)
-            else:
-                width_val = int(width_setting)
-
             try:
                 with suspend_curses(stdscr):
                     temp_dir = os.path.join(tempfile.gettempdir(), "gif2ascii_cache")
@@ -338,15 +328,10 @@ def main_tui(stdscr):
                     temp_asciigif = os.path.join(temp_dir, "current.asciigif")
 
                     print(f"\033[36mConverting '{selected_gif}' with preset '{preset_info['name']}'...\033[0m")
-                    convert_gif(
+                    convert_with_preset(
                         input_path=selected_gif,
                         output_path=temp_asciigif,
-                        width=width_val,
-                        mode=preset_info.get("mode", "blocks"),
-                        color_mode=preset_info.get("color", "truecolor"),
-                        speed=preset_info.get("speed", 1.0),
-                        font_aspect_ratio=0.5,
-                        black_bg=preset_info.get("black_bg", False)
+                        preset_cfg=preset_info
                     )
 
                     # Record in recent history
@@ -375,29 +360,14 @@ def main_tui(stdscr):
 
             default_out = f"{os.path.splitext(selected_gif)[0]}.asciigif"
             out_path = input_prompt(stdscr, "Enter Output .asciigif File Path:", default_out)
-            
-            width_setting = preset_info.get("width", 50)
-            if width_setting == "auto":
-                try:
-                    term_cols = os.get_terminal_size().columns
-                except OSError:
-                    term_cols = 80
-                width_val = max(20, term_cols)
-            else:
-                width_val = int(width_setting)
 
             try:
                 with suspend_curses(stdscr):
                     print(f"\033[36mExporting '{selected_gif}' -> '{out_path}'...\033[0m")
-                    convert_gif(
+                    convert_with_preset(
                         input_path=selected_gif,
                         output_path=out_path,
-                        width=width_val,
-                        mode=preset_info.get("mode", "blocks"),
-                        color_mode=preset_info.get("color", "truecolor"),
-                        speed=preset_info.get("speed", 1.0),
-                        font_aspect_ratio=0.5,
-                        black_bg=preset_info.get("black_bg", False)
+                        preset_cfg=preset_info
                     )
                     print("\033[32mExport complete! Press ENTER to return to menu...\033[0m")
                     input()

@@ -8,7 +8,7 @@ import json
 import shutil
 import time
 from typing import Dict, Any, List, Optional
-from gif2ascii import convert_gif
+from gif2ascii import convert_gif, convert_with_preset
 from presets import PresetManager
 from utils import get_logger
 
@@ -89,6 +89,7 @@ class LibraryManager:
         if not os.path.exists(gif_or_asciigif_path):
             return False
 
+        self.ensure_dirs()
         alias_key = alias.lower().strip().replace(" ", "-")
         target_filename = f"{alias_key}.asciigif"
         target_filepath = os.path.join(self.library_dir, target_filename)
@@ -101,25 +102,10 @@ class LibraryManager:
             shutil.copy2(gif_or_asciigif_path, target_filepath)
         else:
             # Convert GIF directly to library storage
-            width_setting = preset_cfg.get("width", 50)
-            if str(width_setting).lower() == "auto":
-                try:
-                    term_cols = os.get_terminal_size().columns
-                except OSError:
-                    term_cols = 80
-                width_val = max(20, term_cols)
-            else:
-                width_val = int(width_setting)
-
-            convert_gif(
+            convert_with_preset(
                 input_path=gif_or_asciigif_path,
                 output_path=target_filepath,
-                width=width_val,
-                mode=preset_cfg.get("mode", "blocks"),
-                color_mode=preset_cfg.get("color", "truecolor"),
-                speed=preset_cfg.get("speed", 1.0),
-                font_aspect_ratio=0.5,
-                black_bg=preset_cfg.get("black_bg", False)
+                preset_cfg=preset_cfg
             )
 
         index = self.load_index()

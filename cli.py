@@ -9,12 +9,12 @@ import argparse
 import tempfile
 from presets import PresetManager
 from library import LibraryManager
-from gif2ascii import convert_gif, DEFAULT_MAX_IMAGE_PIXELS
+from gif2ascii import convert_gif, convert_with_preset, DEFAULT_MAX_IMAGE_PIXELS
 from ascii_player import play_animation
 from tui import run_tui_app
 from utils import setup_logging, get_logger
 
-__version__ = "1.3.2"
+__version__ = "1.3.3"
 
 logger = get_logger()
 
@@ -141,31 +141,16 @@ def main():
 
         # Convert to temp cache and play
         preset_cfg = pm.get_preset(args.preset)
-        width_setting = args.width if args.width is not None else preset_cfg.get("width", 50)
-        
-        if str(width_setting).lower() == "auto":
-            try:
-                term_cols = os.get_terminal_size().columns
-            except OSError:
-                term_cols = 80
-            width_val = max(20, term_cols)
-        else:
-            width_val = int(width_setting)
-
         temp_dir = os.path.join(tempfile.gettempdir(), "gif2ascii_cache")
         os.makedirs(temp_dir, exist_ok=True)
         temp_asciigif = os.path.join(temp_dir, "play_cache.asciigif")
 
         print(f"\033[36m[gif2ascii] Converting '{input_target}' using preset '{preset_cfg['name']}'...\033[0m")
-        convert_gif(
+        convert_with_preset(
             input_path=input_target,
             output_path=temp_asciigif,
-            width=width_val,
-            mode=preset_cfg.get("mode", "blocks"),
-            color_mode=preset_cfg.get("color", "truecolor"),
-            speed=preset_cfg.get("speed", 1.0),
-            font_aspect_ratio=0.5,
-            black_bg=preset_cfg.get("black_bg", False),
+            preset_cfg=preset_cfg,
+            override_width=args.width,
             max_pixels=args.max_pixels
         )
 
@@ -186,29 +171,13 @@ def main():
             output_path = f"{base}.asciigif"
 
         preset_cfg = pm.get_preset(args.preset)
-        width_setting = args.width if args.width is not None else preset_cfg.get("width", 50)
-        
-        if str(width_setting).lower() == "auto":
-            try:
-                term_cols = os.get_terminal_size().columns
-            except OSError:
-                term_cols = 80
-            width_val = max(20, term_cols)
-        else:
-            width_val = int(width_setting)
-
-        mode_val = args.mode if args.mode else preset_cfg.get("mode", "blocks")
-        color_val = args.color if args.color else preset_cfg.get("color", "truecolor")
-
-        convert_gif(
+        convert_with_preset(
             input_path=input_path,
             output_path=output_path,
-            width=width_val,
-            mode=mode_val,
-            color_mode=color_val,
-            speed=preset_cfg.get("speed", 1.0),
-            font_aspect_ratio=0.5,
-            black_bg=preset_cfg.get("black_bg", False),
+            preset_cfg=preset_cfg,
+            override_width=args.width,
+            override_mode=args.mode,
+            override_color=args.color,
             max_pixels=args.max_pixels
         )
 

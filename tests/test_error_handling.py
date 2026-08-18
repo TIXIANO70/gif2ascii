@@ -35,6 +35,7 @@ class TestErrorHandling(unittest.TestCase):
         self.test_dir.cleanup()
         self.logger.handlers = self._old_handlers
         self.logger.propagate = self._old_propagate
+        Image.MAX_IMAGE_PIXELS = DEFAULT_MAX_IMAGE_PIXELS
 
     def test_setup_logging_levels(self):
         """Test that setup_logging properly sets WARNING or DEBUG levels."""

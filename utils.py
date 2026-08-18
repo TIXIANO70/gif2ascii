@@ -7,6 +7,7 @@ import gzip
 import json
 import logging
 import math
+import os
 import sys
 from typing import Dict, List, Tuple, Any
 from PIL import Image
@@ -240,6 +241,9 @@ def frame_to_ascii(
 
 def save_asciigif(data: Dict[str, Any], output_path: str) -> None:
     """Serialize dictionary payload to gzipped JSON format (.asciigif)."""
+    parent_dir = os.path.dirname(output_path)
+    if parent_dir:
+        os.makedirs(parent_dir, exist_ok=True)
     json_bytes = json.dumps(data, ensure_ascii=False).encode('utf-8')
     compressed = gzip.compress(json_bytes)
     with open(output_path, "wb") as f:

@@ -7,7 +7,7 @@ import sys
 import os
 import argparse
 import time
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union, Dict, Any
 from PIL import Image, ImageSequence
 from utils import frame_to_ascii, save_asciigif, get_logger
 
@@ -15,6 +15,58 @@ logger = get_logger()
 
 DEFAULT_MAX_IMAGE_PIXELS = 89_478_485
 Image.MAX_IMAGE_PIXELS = DEFAULT_MAX_IMAGE_PIXELS
+
+def resolve_preset_width(
+    width_setting: Optional[Union[str, int]] = None,
+    default_width: Union[str, int] = 50,
+    min_cols: int = 20
+) -> int:
+    """Resolve effective target width handling 'auto', numeric strings, and terminal fallback."""
+    setting = width_setting if width_setting is not None else default_width
+    if str(setting).lower() == "auto":
+        try:
+            term_cols = os.get_terminal_size().columns
+        except (OSError, ValueError):
+            term_cols = 80
+        return max(min_cols, term_cols)
+    try:
+        return int(setting)
+    except (ValueError, TypeError):
+        return int(default_width) if str(default_width).isdigit() else 50
+
+def convert_with_preset(
+    input_path: str,
+    output_path: str,
+    preset_cfg: Dict[str, Any],
+    override_width: Optional[Union[str, int]] = None,
+    override_mode: Optional[str] = None,
+    override_color: Optional[str] = None,
+    font_aspect_ratio: float = 0.5,
+    allow_upscale: bool = False,
+    max_pixels: Optional[int] = DEFAULT_MAX_IMAGE_PIXELS
+):
+    """Convert a GIF to .asciigif using preset dictionary parameters and optional CLI/runtime overrides."""
+    width_val = resolve_preset_width(
+        width_setting=override_width,
+        default_width=preset_cfg.get("width", 50)
+    )
+    mode_val = override_mode if override_mode is not None else preset_cfg.get("mode", "blocks")
+    color_val = override_color if override_color is not None else preset_cfg.get("color", "truecolor")
+    speed_val = preset_cfg.get("speed", 1.0)
+    black_bg_val = preset_cfg.get("black_bg", False)
+
+    convert_gif(
+        input_path=input_path,
+        output_path=output_path,
+        width=width_val,
+        mode=mode_val,
+        color_mode=color_val,
+        speed=speed_val,
+        font_aspect_ratio=font_aspect_ratio,
+        black_bg=black_bg_val,
+        allow_upscale=allow_upscale,
+        max_pixels=max_pixels
+    )
 
 def parse_args():
     parser = argparse.ArgumentParser(
